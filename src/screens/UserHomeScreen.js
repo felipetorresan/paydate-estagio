@@ -1,151 +1,141 @@
 import React, { useContext } from "react";
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  FlatList,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { StudentsContext } from "../context/StudentsContext";
 import { AuthContext } from "../context/AuthContext";
-import { useNavigation } from "@react-navigation/native";
-import { Ionicons } from "@expo/vector-icons";
 
-export default function UserHomeScreen() {
-  const { students, deleteStudent } = useContext(StudentsContext);
-  const { currentUser } = useContext(AuthContext);
-  const navigation = useNavigation();
+export default function UserHomeScreen({ navigation }) {
+  const { students } = useContext(StudentsContext);
+  const { user, logout } = useContext(AuthContext); // inclui função de logout
 
-  const normalize = (str) => (str ? str.toString().trim().toLowerCase() : "");
-
-  // Filtra apenas alunos relacionados ao usuário
-  const meusAlunos = students.filter((aluno) => {
-    const ownerEmail = normalize(aluno.owner);
-    const responsavelNome = normalize(aluno.responsavelNome);
-    const currentEmail = normalize(currentUser?.email);
-    const currentNome = normalize(currentUser?.nome);
-    return ownerEmail === currentEmail || responsavelNome === currentNome;
-  });
-
-  const handleDelete = (id, nome) => {
-    Alert.alert(
-      "Excluir Aluno",
-      `Deseja realmente excluir "${nome}"?`,
-      [
-        { text: "Cancelar", style: "cancel" },
-        { text: "Excluir", style: "destructive", onPress: () => deleteStudent(id) },
-      ]
-    );
-  };
-
-const { logout } = useContext(AuthContext);
-
-const handleLogout = () => {
-  logout();                 // limpa usuário logado no contexto
-  navigation.replace("Login"); // volta para tela de login
-};
-
-  const renderItem = ({ item }) => (
-    <View style={styles.card}>
-      <TouchableOpacity
-        style={{ flex: 1 }}
-        onPress={() => navigation.navigate("UserView", { studentId: item.id })}
-      >
-        <Text style={styles.nome}>{item.nome}</Text>
-        <Text style={styles.info}>Turma: {item.turma}</Text>
-        <Text style={styles.info}>Responsável: {item.responsavelNome}</Text>
-        <Text style={styles.info}>Status: {item.status}</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.botaoDelete}
-        onPress={() => handleDelete(item.id, item.nome)}
-      >
-        <Ionicons name="trash" size={22} color="#fff" />
-      </TouchableOpacity>
-    </View>
+  // Filtra apenas alunos do responsável logado
+  const meusAlunos = students.filter(
+    (a) => a.responsavelEmail === user?.email
   );
+
+  const handleLogout = async () => {
+    await logout();
+    navigation.reset({
+      index: 0,
+      routes: [{ name: "Login" }],
+    });
+  };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.titulo}>👤 Meus Alunos</Text>
+      <Text style={styles.titulo}>Olá, {user?.nome || "Responsável"}</Text>
+      <Text style={styles.subtitulo}>Aqui estão seus alunos cadastrados:</Text>
 
-      {meusAlunos.length === 0 ? (
-        <Text style={styles.vazio}>Nenhum aluno encontrado.</Text>
-      ) : (
-        <FlatList
-          data={meusAlunos}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-        />
-      )}
+      <FlatList
+        data={meusAlunos}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={({ item }) => (
+          <TouchableOpacity
+            style={styles.card}
+            onPress={() =>
+              navigation.navigate("UserView", { studentId: item.id })
+            }
+          >
+            <Ionicons name="person-circle-outline" size={40} color="#3b82f6" />
+            <View style={{ marginLeft: 10 }}>
+              <Text style={styles.nome}>{item.nome}</Text>
+              <Text style={styles.turma}>Turma: {item.turma}</Text>
+              <Text
+                style={[
+                  styles.status,
+                  item.status === "Em dia" ? styles.emDia : styles.pendente,
+                ]}
+              >
+                {item.status}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        )}
+        ListEmptyComponent={
+          <Text style={styles.vazio}>
+            Nenhum aluno associado a esta conta.
+          </Text>
+        }
+      />
 
+      {/* Botão para ver todas as parcelas dos alunos do usuário */}
       <TouchableOpacity
-        style={styles.botaoAdd}
-        onPress={() => navigation.navigate("AddStudent")}
+        style={[styles.botao, { backgroundColor: "#6366f1" }]}
+        onPress={() =>
+          navigation.navigate("UserPayments", { responsavelEmail: user?.email })
+        }
       >
-        <Ionicons name="person-add" size={20} color="#fff" />
-        <Text style={styles.textoBotaoAdd}>Cadastrar Aluno</Text>
+        <Ionicons name="cash-outline" size={20} color="#fff" />
+        <Text style={styles.textoBotao}>Ver Todas as Parcelas</Text>
       </TouchableOpacity>
 
+      {/*  Botão de logout */}
       <TouchableOpacity
-        style={styles.botaoPagamentos}
-        onPress={() => navigation.navigate("UserPayments")}
+        style={[styles.botaoLogout, { backgroundColor: "#ef4444" }]}
+        onPress={handleLogout}
       >
-        <Ionicons name="cash" size={20} color="#fff" />
-        <Text style={styles.textoBotaoAdd}>Ver Pagamentos</Text>
+        <Ionicons name="log-out-outline" size={20} color="#fff" />
+        <Text style={styles.textoBotao}>Sair e Voltar ao Login</Text>
       </TouchableOpacity>
-
-      <TouchableOpacity
-            style={styles.botaoSair}
-             onPress={handleLogout}>
-          <Text style={styles.textoBotao}>Voltar para Login</Text>
-       </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f5f5f5", padding: 20, paddingTop: 50 },
-  titulo: { fontSize: 22, fontWeight: "700", marginBottom: 12, textAlign: "center" },
-  vazio: { textAlign: "center", color: "#666", marginTop: 20 },
+  container: { flex: 1, backgroundColor: "#f5f5f5", padding: 20 },
+  titulo: { fontSize: 24, fontWeight: "bold", textAlign: "center" },
+  subtitulo: {
+    textAlign: "center",
+    color: "#555",
+    marginBottom: 20,
+    marginTop: 5,
+  },
   card: {
-    backgroundColor: "#fff",
-    padding: 12,
-    marginBottom: 10,
-    borderRadius: 8,
-    elevation: 2,
     flexDirection: "row",
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 12,
+    elevation: 2,
     alignItems: "center",
   },
-  nome: { fontSize: 18, fontWeight: "700" },
-  info: { fontSize: 14, color: "#555" },
-  botaoAdd: {
+  nome: { fontSize: 18, fontWeight: "600" },
+  turma: { color: "#555", marginTop: 2 },
+  status: { fontWeight: "700", marginTop: 4 },
+  emDia: { color: "#10b981" },
+  pendente: { color: "#ef4444" },
+  botao: {
     flexDirection: "row",
-    justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#3b82f6",
+    justifyContent: "center",
+    padding: 15,
+    borderRadius: 10,
+    marginTop: 15,
+  },
+  textoBotao: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+    marginLeft: 8,
+  },
+  botaoLogout: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     padding: 14,
-    borderRadius: 8,
+    borderRadius: 10,
     marginTop: 20,
   },
-  botaoPagamentos: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#10b981",
-    padding: 14,
-    borderRadius: 8,
-    marginTop: 10,
+  vazio: {
+    textAlign: "center",
+    color: "#888",
+    marginTop: 20,
+    fontStyle: "italic",
   },
-  textoBotaoAdd: { color: "#fff", fontSize: 16, fontWeight: "600", marginLeft: 8 },
-  botaoDelete: {
-    backgroundColor: "#ef4444",
-    padding: 10,
-    borderRadius: 8,
-    marginLeft: 10,
-  },
-    botaoSair: {
-      flexDirection: "row",
-      justifyContent: "center",
-      alignItems: "center",
-      backgroundColor: "#6b7280",
-      padding: 14,
-      borderRadius: 8,
-      marginTop: 15,
-    },
 });

@@ -23,23 +23,39 @@ export default function UserViewScreen({ route, navigation }) {
     );
   }
 
+  const formatarData = (data) => {
+    if (!data) return "—";
+    try {
+      const d = new Date(data);
+      if (isNaN(d)) return data;
+      return d.toLocaleDateString("pt-BR");
+    } catch {
+      return data;
+    }
+  };
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.titulo}>👤 Detalhes do Aluno</Text>
+      <Text style={styles.titulo}> Detalhes do Aluno</Text>
 
       <View style={styles.infoCard}>
         <Text style={styles.label}>Nome:</Text>
-        <Text style={styles.valor}>{aluno.nome}</Text>
+        <Text style={styles.valor}>{aluno.nome || "—"}</Text>
       </View>
 
       <View style={styles.infoCard}>
         <Text style={styles.label}>Turma:</Text>
-        <Text style={styles.valor}>{aluno.turma}</Text>
+        <Text style={styles.valor}>{aluno.turma || "—"}</Text>
       </View>
 
       <View style={styles.infoCard}>
         <Text style={styles.label}>Responsável:</Text>
-        <Text style={styles.valor}>{aluno.responsavelNome}</Text>
+        <Text style={styles.valor}>{aluno.responsavelNome || "—"}</Text>
+      </View>
+
+      <View style={styles.infoCard}>
+        <Text style={styles.label}>Data de Nascimento:</Text>
+        <Text style={styles.valor}>{formatarData(aluno.dataNascimento)}</Text>
       </View>
 
       <View style={styles.infoCard}>
@@ -50,10 +66,11 @@ export default function UserViewScreen({ route, navigation }) {
             aluno.status === "Em dia" ? styles.emDia : styles.pendente,
           ]}
         >
-          {aluno.status}
+          {aluno.status || "Pendente"}
         </Text>
       </View>
 
+      {/*  Ver Pagamentos */}
       <TouchableOpacity
         style={[styles.botao, { backgroundColor: "#10b981" }]}
         onPress={() => navigation.navigate("UserPayments", { aluno })}
@@ -62,6 +79,7 @@ export default function UserViewScreen({ route, navigation }) {
         <Text style={styles.textoBotao}>Ver Pagamentos</Text>
       </TouchableOpacity>
 
+      {/*  Voltar */}
       <TouchableOpacity
         style={[styles.botao, { backgroundColor: "#3b82f6" }]}
         onPress={() => navigation.goBack()}

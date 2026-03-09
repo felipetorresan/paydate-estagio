@@ -18,14 +18,16 @@ import AddStudentScreen from "./src/screens/AddStudentScreen";
 import EditStudentScreen from "./src/screens/EditStudentScreen";
 import ViewScreen from "./src/screens/ViewScreen";
 import PaymentScreen from "./src/screens/PaymentScreen";
-import ParcelScreen from "./src/screens/ParcelScreen";
+import ParcelScreen from "./src/screens/ParcelScreen"; // nova tela: enviar parcela
+import ParcelPaymentScreen from "./src/screens/ParcelPaymentScreen"; // nova tela: detalhe da parcela
+import AllPaymentsScreen from "./src/screens/AllPaymentsScreen";
 
 // Usuário comum
 import UserHomeScreen from "./src/screens/UserHomeScreen";
 import UserViewScreen from "./src/screens/UserViewScreen";
 import UserPaymentsScreen from "./src/screens/UserPaymentsScreen";
-import ParcelPaymentScreen from "./src/screens/ParcelPaymentScreen";
 
+// Configurações de notificações
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -41,42 +43,31 @@ export default function App() {
   const responseListener = useRef(null);
 
   useEffect(() => {
-    // registra permissões / canal
     registerForPushNotificationsAsync();
 
-    // adiciona listeners e guarda as subscriptions retornadas
-    notificationListener.current = Notifications.addNotificationReceivedListener(
-      (notification) => {
+    // Listener de recebimento
+    notificationListener.current =
+      Notifications.addNotificationReceivedListener((notification) => {
         console.log("📩 Notificação recebida:", notification);
-      }
-    );
+      });
 
+    // Listener de clique
     responseListener.current =
       Notifications.addNotificationResponseReceivedListener((response) => {
         console.log("👆 Usuário clicou na notificação:", response);
       });
 
-    // cleanup: remover listeners corretamente
+    // Cleanup seguro
     return () => {
       try {
-        if (notificationListener.current && typeof notificationListener.current.remove === "function") {
+        if (notificationListener.current?.remove) {
           notificationListener.current.remove();
-        } else if (notificationListener.current && typeof Notifications.removeNotificationSubscription === "function") {
-          // compat fallback — mas geralmente não existe em versões mais novas
-          Notifications.removeNotificationSubscription(notificationListener.current);
         }
-      } catch (e) {
-        console.warn("Erro ao remover notificationListener:", e);
-      }
-
-      try {
-        if (responseListener.current && typeof responseListener.current.remove === "function") {
+        if (responseListener.current?.remove) {
           responseListener.current.remove();
-        } else if (responseListener.current && typeof Notifications.removeNotificationSubscription === "function") {
-          Notifications.removeNotificationSubscription(responseListener.current);
         }
       } catch (e) {
-        console.warn("Erro ao remover responseListener:", e);
+        console.warn("Erro ao limpar listeners:", e);
       }
     };
   }, []);
@@ -86,7 +77,7 @@ export default function App() {
       <StudentsProvider>
         <NavigationContainer>
           <Stack.Navigator initialRouteName="Login">
-            {/* Login e Registro */}
+            {/* 🔐 Login e Registro */}
             <Stack.Screen
               name="Login"
               component={LoginScreen}
@@ -98,7 +89,7 @@ export default function App() {
               options={{ title: "Registrar Conta" }}
             />
 
-            {/* Administração */}
+            {/* 🧭 Administração */}
             <Stack.Screen
               name="Home"
               component={HomeScreen}
@@ -124,23 +115,6 @@ export default function App() {
               component={PaymentScreen}
               options={{ title: "Adicionar Pagamento" }}
             />
-
-            {/* Usuário */}
-            <Stack.Screen
-              name="UserHome"
-              component={UserHomeScreen}
-              options={{ title: "Meus Alunos" }}
-            />
-            <Stack.Screen
-              name="UserPayments"
-              component={UserPaymentsScreen}
-              options={{ title: "Minhas Parcelas" }}
-            />
-            <Stack.Screen
-              name="UserView"
-              component={UserViewScreen}
-              options={{ title: "Informações do Aluno" }}
-            />
             <Stack.Screen
               name="ParcelScreen"
               component={ParcelScreen}
@@ -149,7 +123,29 @@ export default function App() {
             <Stack.Screen
               name="ParcelPayment"
               component={ParcelPaymentScreen}
-              options={{ title: "Pagamento da Parcela" }}
+              options={{ title: "Detalhes da Parcela" }}
+            />
+
+            {/* 👤 Usuário comum */}
+            <Stack.Screen
+              name="UserHome"
+              component={UserHomeScreen}
+              options={{ title: "Meus Alunos" }}
+            />
+            <Stack.Screen
+              name="UserView"
+              component={UserViewScreen}
+              options={{ title: "Informações do Aluno" }}
+            />
+            <Stack.Screen
+              name="UserPayments"
+              component={UserPaymentsScreen}
+              options={{ title: "Minhas Parcelas" }}
+            />
+            <Stack.Screen
+              name="AllPayments"
+              component={AllPaymentsScreen}
+              options={{ title: "Todas as Parcelas" }}
             />
           </Stack.Navigator>
         </NavigationContainer>
@@ -159,14 +155,13 @@ export default function App() {
 }
 
 /**
- * Pede permissão para notificações e configura canal Android.
- * Retorna token de dispositivo (string) quando disponível.
+ * Configura canal de notificações e permissões
  */
 export async function registerForPushNotificationsAsync() {
   try {
     if (!Device.isDevice) {
       Alert.alert("Aviso", "Notificações só funcionam em dispositivos físicos.");
-      return null;
+      return;
     }
 
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
@@ -179,7 +174,7 @@ export async function registerForPushNotificationsAsync() {
 
     if (finalStatus !== "granted") {
       Alert.alert("Permissão", "Permissão para notificações não concedida.");
-      return null;
+      return;
     }
 
     if (Platform.OS === "android") {
@@ -191,7 +186,6 @@ export async function registerForPushNotificationsAsync() {
       });
     }
 
-    // opcional: token para push server (não usado agora)
     const tokenData = await Notifications.getExpoPushTokenAsync().catch(() => null);
     const token = tokenData?.data ?? null;
     console.log("Push token:", token);

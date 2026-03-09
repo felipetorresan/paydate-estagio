@@ -23,7 +23,7 @@ export default function ParcelScreen({ route, navigation }) {
 
   const handleEnviarParcela = async () => {
     if (!valor || !descricao || !vencimento) {
-      Alert.alert("⚠️ Campos obrigatórios", "Preencha todos os campos.");
+      Alert.alert(" Campos obrigatórios", "Preencha todos os campos.");
       return;
     }
 
@@ -40,11 +40,11 @@ export default function ParcelScreen({ route, navigation }) {
 
     // Envia notificação local simulando envio para responsável
     sendNotification(
-      "📬 Nova Parcela",
+      " Nova Parcela",
       `Uma nova parcela foi gerada para ${aluno.nome}.`
     );
 
-    Alert.alert("✅ Sucesso", "Parcela enviada ao responsável.");
+    Alert.alert(" Sucesso", "Parcela enviada ao responsável.");
     navigation.goBack();
   };
 
@@ -53,7 +53,7 @@ export default function ParcelScreen({ route, navigation }) {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       style={styles.container}
     >
-      <Text style={styles.titulo}>💸 Enviar Parcela</Text>
+      <Text style={styles.titulo}>Enviar Parcela</Text>
 
       <View style={styles.inputContainer}>
         <Text style={styles.label}>Aluno:</Text>

@@ -1,4 +1,4 @@
-import React, { useContext, useEffect } from "react";
+import React, { useContext, useEffect, useMemo } from "react";
 import { View, Text, StyleSheet, FlatList, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { StudentsContext } from "../context/StudentsContext";
@@ -10,19 +10,29 @@ export default function UserPaymentsScreen({ route, navigation }) {
   const { currentUser } = useContext(AuthContext);
 
   const alunoSelecionado = route.params?.aluno;
-  const parcelasDoAluno = payments.filter(
-    (p) => p.idAluno === alunoSelecionado?.id
-  );
+  const responsavelEmail = route.params?.responsavelEmail;
 
-  // 🔔 Envia notificação quando há novas parcelas
-  useEffect(() => {
-    if (parcelasDoAluno.length > 0) {
-      sendNotification(
-        "📬 Nova Parcela",
-        "Uma nova parcela foi gerada para seu aluno."
-      );
+  //  Filtro inteligente
+  const parcelasVisiveis = useMemo(() => {
+    if (alunoSelecionado) {
+      // mostra parcelas do aluno selecionado
+      return payments.filter((p) => p.idAluno === alunoSelecionado.id);
+    } else if (responsavelEmail) {
+      // mostra todas parcelas dos alunos do responsável
+      const idsAlunosResponsavel = students
+        .filter((s) => s.responsavelEmail === responsavelEmail)
+        .map((s) => s.id);
+      return payments.filter((p) => idsAlunosResponsavel.includes(p.idAluno));
     }
-  }, [parcelasDoAluno.length]);
+    return [];
+  }, [payments, students, alunoSelecionado, responsavelEmail]);
+
+  // Notificação para novas parcelas
+  useEffect(() => {
+    if (parcelasVisiveis.length > 0) {
+      sendNotification(" Nova Parcela", "Uma nova parcela foi gerada.");
+    }
+  }, [parcelasVisiveis.length]);
 
   const renderItem = ({ item }) => {
     let statusColor = "#f59e0b";
@@ -40,12 +50,7 @@ export default function UserPaymentsScreen({ route, navigation }) {
     }
 
     return (
-      <TouchableOpacity
-        style={styles.card}
-        onPress={() =>
-          navigation.navigate("ParcelPayment", { parcelaId: item.id })
-        }
-      >
+      <View style={styles.card}>
         <View style={styles.row}>
           <Ionicons name={iconName} size={24} color={statusColor} />
           <View style={{ flex: 1, marginLeft: 10 }}>
@@ -57,21 +62,21 @@ export default function UserPaymentsScreen({ route, navigation }) {
             {item.status?.toUpperCase() || "PENDENTE"}
           </Text>
         </View>
-      </TouchableOpacity>
+      </View>
     );
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.titulo}>
-        💰 Parcelas de {alunoSelecionado?.nome || "Aluno"}
+         {alunoSelecionado ? `Parcelas de ${alunoSelecionado.nome}` : "Todas as Parcelas dos Meus Alunos"}
       </Text>
 
-      {parcelasDoAluno.length === 0 ? (
+      {parcelasVisiveis.length === 0 ? (
         <Text style={styles.vazio}>Nenhuma parcela registrada.</Text>
       ) : (
         <FlatList
-          data={parcelasDoAluno}
+          data={parcelasVisiveis}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
         />
@@ -84,6 +89,10 @@ export default function UserPaymentsScreen({ route, navigation }) {
         <Ionicons name="arrow-back" size={20} color="#fff" />
         <Text style={styles.textoBotao}>Voltar</Text>
       </TouchableOpacity>
+
+      <Text style={styles.legenda}>
+        Observação: Apenas administradores podem confirmar/registrar pagamentos.
+      </Text>
     </View>
   );
 }
@@ -144,5 +153,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     marginLeft: 8,
+  },
+  legenda: {
+    textAlign: "center",
+    color: "#666",
+    marginTop: 12,
+    fontSize: 13,
   },
 });

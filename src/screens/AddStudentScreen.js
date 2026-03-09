@@ -1,114 +1,166 @@
-import React, { useState, useContext, useEffect } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from "react-native";
+import React, { useState, useContext } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  Platform,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { StudentsContext } from "../context/StudentsContext";
 import { AuthContext } from "../context/AuthContext";
-import { useNavigation } from "@react-navigation/native";
 
-export default function AddStudentScreen() {
+export default function AddStudentScreen({ navigation }) {
   const { addStudent } = useContext(StudentsContext);
-  const { currentUser } = useContext(AuthContext);
-  const navigation = useNavigation();
+  const { user } = useContext(AuthContext);
 
   const [nome, setNome] = useState("");
   const [turma, setTurma] = useState("");
-  const [responsavelNome, setResponsavelNome] = useState("");
+  const [responsavel, setResponsavel] = useState("");
+  const [dataNascimento, setDataNascimento] = useState(new Date());
+  const [status, setStatus] = useState("Pendente");
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
-  // Se for usuário comum, preenche nome do responsável automaticamente
-  useEffect(() => {
-    if (currentUser?.tipo === "usuario") {
-      setResponsavelNome(currentUser.nome);
-    }
-  }, [currentUser]);
+  const formatarData = (date) => {
+    const d = new Date(date);
+    const dia = String(d.getDate()).padStart(2, "0");
+    const mes = String(d.getMonth() + 1).padStart(2, "0");
+    const ano = d.getFullYear();
+    return `${dia}/${mes}/${ano}`;
+  };
 
-  const handleSalvar = () => {
-    if (!nome.trim() || !turma.trim() || !responsavelNome.trim()) {
-      alert("Preencha todos os campos!");
+  const handleAddStudent = async () => {
+    if (!nome.trim()) {
+      alert("Por favor, insira o nome do aluno.");
       return;
     }
 
-    addStudent(
-      {
-        nome: nome.trim(),
-        turma: turma.trim(),
-        responsavelNome: responsavelNome.trim(),
-        status: "pendente",
-      },
-      currentUser.email
-    );
+    const novoAluno = {
+      nome,
+      turma,
+      responsavel,
+      responsavelNome: responsavel,
+      responsavelEmail: user?.email,
+      dataNascimento: dataNascimento.toISOString(),
+      status,
+    };
 
+    await addStudent(novoAluno, user?.email);
+    alert("✅ Aluno cadastrado com sucesso!");
     navigation.goBack();
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.titulo}>Cadastrar Aluno</Text>
+    <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.titulo}> Adicionar Novo Aluno</Text>
 
+      <Text style={styles.label}>Nome do Aluno</Text>
       <TextInput
         style={styles.input}
-        placeholder="Nome do Aluno"
+        placeholder="Ex: João Silva"
         value={nome}
         onChangeText={setNome}
       />
 
+      <Text style={styles.label}>Turma</Text>
       <TextInput
         style={styles.input}
-        placeholder="Turma"
+        placeholder="Ex: 5º Ano"
         value={turma}
         onChangeText={setTurma}
       />
 
+      <Text style={styles.label}>Responsável</Text>
       <TextInput
-        style={[
-          styles.input,
-          currentUser?.tipo === "usuario" && styles.inputBloqueado,
-        ]}
-        placeholder="Nome do Responsável"
-        value={responsavelNome}
-        onChangeText={setResponsavelNome}
-        editable={currentUser?.tipo !== "usuario"}
+        style={styles.input}
+        placeholder="Ex: Maria Silva"
+        value={responsavel}
+        onChangeText={setResponsavel}
       />
 
-      <TouchableOpacity style={styles.botaoSalvar} onPress={handleSalvar}>
-        <Text style={styles.textoBotao}>Salvar</Text>
+      <Text style={styles.label}>Data de Nascimento</Text>
+      <TouchableOpacity
+        onPress={() => setShowDatePicker(true)}
+        style={styles.dateInput}
+      >
+        <Ionicons
+          name="calendar-outline"
+          size={20}
+          color="#555"
+          style={{ marginRight: 8 }}
+        />
+        <Text style={styles.dateText}>{formatarData(dataNascimento)}</Text>
       </TouchableOpacity>
-    </View>
+
+      {showDatePicker && (
+        <DateTimePicker
+          value={dataNascimento}
+          mode="date"
+          display={Platform.OS === "ios" ? "spinner" : "default"}
+          onChange={(event, selectedDate) => {
+            setShowDatePicker(false);
+            if (selectedDate) setDataNascimento(selectedDate);
+          }}
+        />
+      )}
+
+      <TouchableOpacity
+        style={[styles.botao, { backgroundColor: "#10b981" }]}
+        onPress={handleAddStudent}
+      >
+        <Ionicons name="add-circle-outline" size={20} color="#fff" />
+        <Text style={styles.textoBotao}>Cadastrar Aluno</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.botao, { backgroundColor: "#3b82f6" }]}
+        onPress={() => navigation.goBack()}
+      >
+        <Ionicons name="arrow-back" size={20} color="#fff" />
+        <Text style={styles.textoBotao}>Voltar</Text>
+      </TouchableOpacity>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f5f5f5",
-    padding: 20,
-    paddingTop: 50,
-  },
+  container: { flexGrow: 1, padding: 20, backgroundColor: "#f5f5f5" },
   titulo: {
-    fontSize: 22,
-    fontWeight: "700",
-    marginBottom: 20,
+    fontSize: 24,
+    fontWeight: "bold",
     textAlign: "center",
+    marginBottom: 25,
   },
+  label: { fontWeight: "700", fontSize: 16, marginTop: 15, color: "#444" },
   input: {
     backgroundColor: "#fff",
     padding: 12,
     borderRadius: 8,
+    marginTop: 5,
     fontSize: 16,
-    marginBottom: 15,
+    elevation: 1,
   },
-  inputBloqueado: {
-    backgroundColor: "#e5e7eb",
-    color: "#555",
-  },
-  botaoSalvar: {
-    backgroundColor: "#3b82f6",
-    padding: 14,
-    borderRadius: 8,
+  dateInput: {
+    flexDirection: "row",
     alignItems: "center",
-    marginTop: 10,
+    backgroundColor: "#fff",
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 5,
+    elevation: 1,
   },
-  textoBotao: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
+  dateText: { fontSize: 16, color: "#222" },
+  botao: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 15,
+    borderRadius: 10,
+    marginTop: 25,
   },
+  textoBotao: { color: "#fff", fontSize: 16, fontWeight: "600", marginLeft: 8 },
 });
+
